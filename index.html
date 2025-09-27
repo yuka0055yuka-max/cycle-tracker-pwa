@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cycle Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff"/>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Cycle Tracker</h1>
+            <div class="navigation">
+                <button id="prev-month">&lt;</button>
+                <h2 id="current-month-year"></h2>
+                <button id="next-month">&gt;</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="weekdays">
+                <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+
+            <section class="predictions">
+                <h3>今後の予測</h3>
+                <p>次の生理予定日: <strong id="next-period-date">-</strong></p>
+                <p>排卵予定日: <strong id="next-ovulation-date">-</strong></p>
+                <p>平均周期: <strong id="avg-cycle-length">-</strong> 日</p>
+            </section>
+            
+            <section class="chart-container">
+                <h3>基礎体温グラフ</h3>
+                <canvas id="temp-chart"></canvas>
+            </section>
+            
+            <section class="data-management">
+                <h3>データ管理</h3>
+                <button id="export-data">データをエクスポート</button>
+                <label for="import-file" class="import-button">データをインポート</label>
+                <input type="file" id="import-file" accept=".json" style="display:none;">
+            </section>
+        </main>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modal-date"></h3>
+            
+            <div class="modal-section">
+                <h4>生理</h4>
+                <div class="button-group">
+                    <button id="log-period-start">開始日</button>
+                    <button id="log-period-end">終了日</button>
+                    <button id="log-spotting">不正出血</button>
+                    <button id="clear-period" class="danger">記録削除</button>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h4>基礎体温 (°C)</h4>
+                <input type="number" id="temperature-input" step="0.01" placeholder="例: 36.50">
+            </div>
+
+            <div class="modal-section">
+                <h4>症状・気分 (複数選択可)</h4>
+                <div id="symptoms-checkboxes" class="symptoms-group">
+                    </div>
+            </div>
+
+            <div class="modal-section">
+                <h4>メモ</h4>
+                <textarea id="note-input" rows="3" placeholder="何かあれば記録..."></textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="save-data" class="primary-button">保存</button>
+                <button id="share-data">共有</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
