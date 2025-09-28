@@ -83,9 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 今月の日付
         for (let i = 1; i <= lastDateOfMonth; i++) {
-            const dayEl = document.createElement('div');
-            const date = new Date(year, month, i);
-            const dateStr = toDateString(date);
+            const toDateString = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1し、2桁にフォーマット
+            const day = String(date.getDate()).padStart(2, '0');      // 日を2桁にフォーマット
+            return `${year}-${month}-${day}`;
+};
 
             dayEl.className = 'calendar-day';
             dayEl.dataset.date = dateStr;
