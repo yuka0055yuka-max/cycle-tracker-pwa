@@ -83,12 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 今月の日付
         for (let i = 1; i <= lastDateOfMonth; i++) {
-            const toDateString = (date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1し、2桁にフォーマット
-            const day = String(date.getDate()).padStart(2, '0');      // 日を2桁にフォーマット
-            return `${year}-${month}-${day}`;
-};
+            const dayEl = document.createElement('div');
+            const date = new Date(year, month, i);
+            const dateStr = toDateString(date);
 
             dayEl.className = 'calendar-day';
             dayEl.dataset.date = dateStr;
@@ -375,7 +372,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const toDateString = (date) => date.toISOString().split('T')[0];
+    // --- 変更点 ---
+    // タイムゾーンの問題を回避するため、ローカルの日付から文字列を生成します。
+    const toDateString = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const formatDate = (dateStr, format = 'long') => {
         const [year, month, day] = dateStr.split('-');
         return format === 'short' ? `${parseInt(month)}/${parseInt(day)}` : `${year}年${parseInt(month)}月${parseInt(day)}日`;
