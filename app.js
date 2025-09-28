@@ -31,6 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextOvulationDateEl = document.getElementById('next-ovulation-date');
     const avgCycleLengthEl = document.getElementById('avg-cycle-length');
 
+    // --- 修正点 1: 全ての日付の基準をUTCに統一するためのヘルパー関数 ---
+    const toDateString = (date) => {
+        // 常にUTCの年月日を取得して、YYYY-MM-DD形式の文字列を返す
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const parseDateString = (dateStr) => {
+        // YYYY-MM-DD形式の文字列をUTCの日付オブジェクトに変換
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, day));
+    };
+
+
     const init = () => {
         loadData();
         render();
@@ -67,13 +83,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         monthYearEl.textContent = `${year}年 ${month + 1}月`;
         
-        const firstDayOfMonth = new Date(year, month, 1).getDay();
-        const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
-        const lastDateOfPrevMonth = new Date(year, month, 0).getDate();
+        // --- 修正点 2: カレンダー生成の基準もローカルタイムからUTCに ---
+        const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
+        const lastDateOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const lastDateOfPrevMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
         
         const { fertileWindow, ovulationDate } = getPredictions();
+        const todayStr = toDateString(new Date());
 
-        // 前月の日付
         for (let i = firstDayOfMonth; i > 0; i--) {
             const dayEl = document.createElement('div');
             dayEl.className = 'calendar-day not-current-month';
@@ -81,10 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
             calendarGridEl.appendChild(dayEl);
         }
 
-        // 今月の日付
         for (let i = 1; i <= lastDateOfMonth; i++) {
             const dayEl = document.createElement('div');
-            const date = new Date(year, month, i);
+            // --- 修正点 3: 日付オブジェクトをUTCで生成 ---
+            const date = new Date(Date.UTC(year, month, i));
             const dateStr = toDateString(date);
 
             dayEl.className = 'calendar-day';
@@ -95,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dayNumber.textContent = i;
             dayEl.appendChild(dayNumber);
 
-            if (toDateString(new Date()) === dateStr) {
+            if (todayStr === dateStr) {
                 dayEl.classList.add('today');
             }
 
@@ -115,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
             calendarGridEl.appendChild(dayEl);
         }
 
-        // 次月の日付
         const totalDays = firstDayOfMonth + lastDateOfMonth;
         const nextMonthDays = (7 - (totalDays % 7)) % 7;
         for (let i = 1; i <= nextMonthDays; i++) {
@@ -130,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return db.periods.some(p => {
             const start = p.startDate;
             const end = p.endDate || start;
+            // 文字列での比較は問題ないので、ここは変更なし
             return dateStr >= start && dateStr <= end;
         });
     };
@@ -142,11 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cycleLengths = [];
         for (let i = 1; i < sortedStarts.length; i++) {
-            const prev = new Date(sortedStarts[i-1]);
-            const curr = new Date(sortedStarts[i]);
-            const diffTime = Math.abs(curr - prev);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays > 10 && diffDays < 60) { // 極端な値をフィルタリング
+            // --- 修正点 4: UTCの日付オブジェクトとして解釈して計算 ---
+            const prev = parseDateString(sortedStarts[i-1]);
+            const curr = parseDateString(sortedStarts[i]);
+            const diffTime = Math.abs(curr.getTime() - prev.getTime());
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 10 && diffDays < 60) {
                 cycleLengths.push(diffDays);
             }
         }
@@ -160,19 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (db.periods.length === 0) return { nextPeriodDate: null, ovulationDate: null, fertileWindow: [] };
 
         const avgCycle = calculateAvgCycleLength();
-        const lastPeriodStart = [...db.periods].sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0].startDate;
+        const lastPeriodStart = [...db.periods].sort((a, b) => parseDateString(b.startDate) - parseDateString(a.startDate))[0].startDate;
         
-        const lastStartDate = new Date(lastPeriodStart);
+        // --- 修正点 5: 予測計算も全てUTCベースで行う ---
+        const lastStartDate = parseDateString(lastPeriodStart);
+        
         const nextPeriodDate = new Date(lastStartDate);
-        nextPeriodDate.setDate(lastStartDate.getDate() + avgCycle);
+        nextPeriodDate.setUTCDate(lastStartDate.getUTCDate() + avgCycle);
         
         const ovulationDate = new Date(nextPeriodDate);
-        ovulationDate.setDate(nextPeriodDate.getDate() - 14);
+        ovulationDate.setUTCDate(nextPeriodDate.getUTCDate() - 14);
 
         const fertileWindow = [];
         for (let i = -5; i <= 1; i++) {
             const fertileDay = new Date(ovulationDate);
-            fertileDay.setDate(ovulationDate.getDate() + i);
+            fertileDay.setUTCDate(ovulationDate.getUTCDate() + i);
             fertileWindow.push(toDateString(fertileDay));
         }
 
@@ -251,7 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isPeriodDay(selectedDate)) return;
             const ongoingPeriod = db.periods.find(p => !p.endDate);
             if (ongoingPeriod) {
-                ongoingPeriod.endDate = toDateString(new Date(new Date(selectedDate).getTime() - 86400000));
+                const prevDate = parseDateString(selectedDate);
+                prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+                ongoingPeriod.endDate = toDateString(prevDate);
             }
             db.periods.push({ startDate: selectedDate, endDate: null });
             saveAndRender();
@@ -291,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `cycle-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `cycle-tracker-backup-${toDateString(new Date())}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -352,11 +374,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderTempChart = () => {
         const ctx = document.getElementById('temp-chart').getContext('2d');
         const sixtyDaysAgo = new Date();
-        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
 
         const filteredData = db.temperatures
-            .filter(t => new Date(t.date) >= sixtyDaysAgo && t.temp)
-            .sort((a,b) => new Date(a.date) - new Date(b.date));
+            .filter(t => parseDateString(t.date) >= sixtyDaysAgo && t.temp)
+            .sort((a,b) => parseDateString(a.date) - parseDateString(b.date));
 
         const labels = filteredData.map(t => formatDate(t.date, 'short'));
         const data = filteredData.map(t => t.temp);
@@ -370,15 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }]},
             options: { scales: { y: { beginAtZero: false, suggestedMin: 35.5, suggestedMax: 37.5 }}}
         });
-    };
-
-    // --- 変更点 ---
-    // タイムゾーンの問題を回避するため、ローカルの日付から文字列を生成します。
-    const toDateString = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
     };
 
     const formatDate = (dateStr, format = 'long') => {
